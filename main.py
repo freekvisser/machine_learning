@@ -1,32 +1,41 @@
 import numpy as np
+from neural_network import Network
+from layer import FCLayer, ActivationLayer, Layer
 
 
-class ValueContainer:
-    def __init__(self, value):
-        self.value = value
+def mse(y_true, y_pred):
+    return np.mean(np.power(y_true - y_pred, 2))
 
 
-class NeuralNetwork:
-    def __init__(self, input_size, output_size):
-        self.weights = np.random.rand(input_size, output_size) - 0.5
-        self.bias = np.random.rand(1, output_size) - 0.5
+def mse_prime(y_true, y_pred):
+    return 2 * (y_pred - y_true) / y_true.size
 
 
-class Link(ValueContainer):
-    def __init__(self, value):
-        super().__init__(value)
+def tanh(x):
+    return np.tanh(x)
 
 
-class Node(ValueContainer):
-    def __init__(self, value):
-        super().__init__(value)
+def tanh_prime(x):
+    return 1 - np.tanh(x) ** 2
 
 
-class InNode(ValueContainer):
-    def __init__(self, value):
-        super().__init__(value)
+if __name__ == '__main__':
+    # training data
+    x_train = np.array([[0, 1, 0],
+                        [1, 0, 1],
+                        [0, 1, 0]])
+    y_train = np.array([[0, 1, 0],
+                        [1, 0, 1],
+                        [0, 1, 0]])
+    # network
+    net = Network()
+    net.add(FCLayer(9, 2))
+    net.add(ActivationLayer(tanh, tanh_prime))
 
+    # train
+    net.use(mse, mse_prime)
+    net.fit(x_train, y_train, epochs=1000, learning_rate=0.1)
 
-class OutNode(ValueContainer):
-    def __init__(self, value):
-        super().__init__(value)
+    # test
+    out = net.predict(x_train)
+    print(out)
