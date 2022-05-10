@@ -1,16 +1,32 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import numpy as np
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+class ValueContainer:
+    def __init__(self, value):
+        self.value = value
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+class NeuralNetwork:
+    def __init__(self, input_size, output_size):
+        self.weights = np.random.rand(input_size, output_size) - 0.5
+        self.bias = np.random.rand(1, output_size) - 0.5
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+class Link(ValueContainer):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class Node(ValueContainer):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class InNode(ValueContainer):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class OutNode(ValueContainer):
+    def __init__(self, value):
+        super().__init__(value)
