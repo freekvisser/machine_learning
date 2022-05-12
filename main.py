@@ -1,6 +1,6 @@
 import numpy as np
 from neural_network import Network
-from layer import FCLayer, ActivationLayer, Layer
+from layer import FCLayer, ActivationLayer
 
 
 def mse(y_true, y_pred):
@@ -21,15 +21,34 @@ def tanh_prime(x):
 
 if __name__ == '__main__':
     # training data
-    x_train = np.array([[0, 1, 0],
-                        [1, 0, 1],
-                        [0, 1, 0]])
-    y_train = np.array([[0, 1, 0],
-                        [1, 0, 1],
-                        [0, 1, 0]])
+    x_train = np.array([[[0, 1, 0,
+                          1, 0, 1,
+                          0, 1, 0]],
+                        [[1, 0, 1,
+                          0, 1, 0,
+                          1, 0, 1]],
+                        [[0, 1, 0,
+                          1, 0, 1,
+                          0, 1, 0]],
+                        [[1, 0, 1,
+                          0, 1, 0,
+                          1, 0, 1]]])
+    y_train = np.array([[[0]],
+                        [[1]],
+                        [[0]],
+                        [[1]]])
+
+    test_cross = np.array([[[0, 1, 0,
+                             1, 0, 1,
+                             0, 1, 0],
+                            [1, 0, 1,
+                             0, 1, 0,
+                             1, 0, 1]]])
     # network
     net = Network()
-    net.add(FCLayer(9, 2))
+    net.add(FCLayer(9, 3))
+    net.add(ActivationLayer(tanh, tanh_prime))
+    net.add(FCLayer(3, 1))
     net.add(ActivationLayer(tanh, tanh_prime))
 
     # train
@@ -37,5 +56,5 @@ if __name__ == '__main__':
     net.fit(x_train, y_train, epochs=1000, learning_rate=0.1)
 
     # test
-    out = net.predict(x_train)
+    out = net.predict(test_cross)
     print(out)
