@@ -24,7 +24,8 @@ bach = (
     )
 )
 
-muser = ms.Muser ()
+
+muser = ms.Muser()
 composer = cp.Composer()
 composer.save("bach", bach)
-muser.generate (bach)
+muser.generate(bach)
