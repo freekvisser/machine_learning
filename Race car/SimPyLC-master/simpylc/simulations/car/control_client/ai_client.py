@@ -1,110 +1,98 @@
 import time as tm
+import traceback as tb
+import math as mt
 import sys as ss
 import os
 import socket as sc
 import numpy as np
-from neural_network import Network
-from layer import FCLayer, ActivationLayer
 
-ss.path += [os.path.abspath(relPath) for relPath in ('..',)]
+ss.path +=  [os.path.abspath (relPath) for relPath in  ('..',)]
 
 import socket_wrapper as sw
 import parameters as pm
+import pickle
+from sklearn.neural_network import MLPRegressor
+
+finity = 20.0  # Needs to be float to obtain ditto numpy array
+
+lidarInputDim = 16
+
+sampleFileName = 'default.samples'
+
+X = np.loadtxt("default.samples", delimiter=' ')
+
+modelSaveFile = 'model.sav'
 
 
-def loss(y_true, y_pred):
-    return np.mean(np.power(y_true - y_pred, 2))
+def getTargetVelocity(steeringAngle):
+    return (90 - abs(steeringAngle)) / 60
 
 
-def loss_prime(y_true, y_pred):
-    return 2 * (y_pred - y_true) / y_true.size
-
-
-def activation(x):
-    return np.tanh(x)
-
-
-def activation_prime(x):
-    return 1 - np.tanh(x) ** 2
-
-
-class AiClient:
+class AIClient:
     def __init__(self):
         self.steeringAngle = 0
 
-        with open(pm.sampleFileName, 'w') as self.sampleFile:
-            with sc.socket(*sw.socketType) as self.clientSocket:
-                self.clientSocket.connect(sw.address)
-                self.socketWrapper = sw.SocketWrapper(self.clientSocket)
-                self.halfApertureAngle = False
-                # training data
-                in_train = np.array([[[270]],
-                                     [[90]],
-                                     [[270]],
-                                     [[90]]])
-                out_train = np.array([[[0, 1]],
-                                      [[1, 0]],
-                                      [[0, 1]],
-                                      [[1, 0]]])
+        createModel = input("Create new model? [y/N]: ")
 
-                test_cross = np.array([[[270]],
-                                       [[90]]])
-                # network
-                net = Network()
-                net.add_layer(FCLayer(1, 2))
-                net.add_layer(ActivationLayer(activation, activation_prime))
+        if 'y' not in createModel.lower():
+            try:
+                self.neuralNet = pickle.load(open(modelSaveFile, 'rb'))
+            except Exception:
+                raise FileNotFoundError
+            print("Loaded model.")
+        else:
+            print("Training...")
+            self.neuralNet = MLPRegressor(learning_rate_init=0.005,
+                                            n_iter_no_change=500,
+                                            verbose=True,
+                                            random_state=1,
+                                            hidden_layer_sizes=(128, 128, 128),
+                                            max_iter=100000)
+            self.neuralNet.fit(X[:, :-1], X[:, -1])
+            print(self.neuralNet.best_loss_)
+            pickle.dump(self.neuralNet, open(modelSaveFile, 'wb'))
+            print(f"Training finished in {self.neuralNet.n_iter_} cycles.")
 
-                # train
-                net.create_loss(loss, loss_prime)
-                net.train_network(in_train, out_train, cycles=1000, learning_rate=0.1)
-                while True:
-                    self.input()
-                    self.lidarSweep()
-                    self.output()
-                    tm.sleep(0.02)
+        with sc.socket(*sw.socketType) as self.clientSocket:
+            self.clientSocket.connect(sw.address)
+            self.socketWrapper = sw.SocketWrapper(self.clientSocket)
+            self.halfApertureAngle = False
 
-
-                    # test
-                    out = net.get_output(test_cross)
-                    print(out)
+            while True:
+                self.input()
+                self.lidarSweep()
+                self.output()
+                tm.sleep(0.02)
 
     def input(self):
         sensors = self.socketWrapper.recv()
 
         if not self.halfApertureAngle:
             self.halfApertureAngle = sensors['halfApertureAngle']
-            self.sectorAngle = 2 * self.halfApertureAngle / pm.lidarInputDim
+            self.sectorAngle = 2 * self.halfApertureAngle / lidarInputDim
             self.halfMiddleApertureAngle = sensors['halfMiddleApertureAngle']
 
-        if 'lidarDistances' in sensors:
-            self.lidarDistances = sensors['lidarDistances']
+        self.lidarDistances = sensors['lidarDistances']
 
     def lidarSweep(self):
-        nearestObstacleDistance = pm.finity
-        nearestObstacleAngle = 0
-
-        nextObstacleDistance = pm.finity
-        nextObstacleAngle = 0
-
+        sample = [finity for eI in range(lidarInputDim)]
         for lidarAngle in range(-self.halfApertureAngle, self.halfApertureAngle):
-            lidarDistance = self.lidarDistances[lidarAngle]
+            sectorIndex = round(lidarAngle / self.sectorAngle)
+            sample[sectorIndex] = min(sample[sectorIndex], self.lidarDistances[lidarAngle])
 
-            if lidarDistance < nearestObstacleDistance:
-                nextObstacleDistance = nearestObstacleDistance
-                nextObstacleAngle = nearestObstacleAngle
+        lowest = sample[:]
+        lowest.sort()
+        lowest = lowest[:2]
 
-                nearestObstacleDistance = lidarDistance
-                nearestObstacleAngle = lidarAngle
+        for i in range(len(sample)):
+            if sample[i] not in lowest:
+                sample[i] = finity
 
-            elif lidarDistance < nextObstacleDistance:
-                nextObstacleDistance = lidarDistance
-                nextObstacleAngle = lidarAngle
+        numpySample = np.array(sample).reshape(1, -1)
 
-        targetObstacleDistance = (nearestObstacleDistance + nextObstacleDistance) / 2
-        print(targetObstacleDistance)
+        self.steeringAngle = self.neuralNet.predict(numpySample)[0]
 
-        self.steeringAngle = (nearestObstacleAngle + nextObstacleAngle) / 2
-        self.targetVelocity = pm.getTargetVelocity(self.steeringAngle)
+        self.targetVelocity = getTargetVelocity(self.steeringAngle)
 
     def output(self):
         actuators = {
@@ -115,4 +103,4 @@ class AiClient:
         self.socketWrapper.send(actuators)
 
 
-AiClient()
+AIClient()
