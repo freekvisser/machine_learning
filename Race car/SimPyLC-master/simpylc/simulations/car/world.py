@@ -29,8 +29,10 @@ import os
 import sys as ss
 import time as tm
 
-ss.path +=  [os.path.abspath (relPath) for relPath in  ('../../..', '..')]   # If you want to store your simulations somewhere else, put SimPyLC in your PYTHONPATH environment variable
-scannerType = 'lidar' if input ('Lidar or sonar <l/s>: ') == 'l' else 'sonar'  # Should be done prior to any SimPyLC related imports due to concurrency
+ss.path += [os.path.abspath(relPath) for relPath in ('../../..',
+                                                     '..')]  # If you want to store your simulations somewhere else, put SimPyLC in your PYTHONPATH environment variable
+scannerType = 'lidar' if input(
+    'Lidar or sonar <l/s>: ') == 'l' else 'sonar'  # Should be done prior to any SimPyLC related imports due to concurrency
 
 import simpylc as sp
 
@@ -40,7 +42,7 @@ import visualisation as vs
 
 vs.scannerType = scannerType
 
-sp.World (
+sp.World(
     cs.ControlServer,
     ps.Physics,
     vs.Visualisation
