@@ -53,4 +53,3 @@ class Network:
 
             # calculate average error on all samples
             total_error /= samples
-            print('range %d/%d   error_value=%f' % (i + 1, cycles, total_error))
